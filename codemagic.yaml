@@ -13,9 +13,11 @@ workflows:
     scripts:
       - name: variable check
         script: echo $UNITY_HOME
+      - name: unity check
+        script: unity --version       
       - name: Build the project
         script: | 
-          $UNITY_HOME/Contents/MacOS/Unity -batchmode \
+          Unity -batchmode \
             -quit \
             -logFile \
             -projectPath . \
