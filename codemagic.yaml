@@ -11,6 +11,8 @@ workflows:
         - tag
         - pull_request
     scripts:
+      - name: variable check
+        script: echo $UNITY_HOME
       - name: Build the project
         script: | 
           $UNITY_HOME/Contents/MacOS/Unity -batchmode \
