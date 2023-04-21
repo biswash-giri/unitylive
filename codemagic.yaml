@@ -1,0 +1,46 @@
+workflows:
+  unity-android-workflow:
+    name: Unity Android Workflow
+    max_build_duration: 120
+    environment:
+      groups:
+        # Add the group environment variables in Codemagic UI (either in Application/Team variables) - https://docs.codemagic.io/variables/environment-variable-groups/
+        - unity # <-- (Includes UNITY_HOME, UNITY_SERIAL, UNITY_USERNAME and UNITY_PASSWORD)
+        # - keystore_credentials # Uncomment this if you're not using code-signing-identities <-- (Includes CM_KEYSTORE, CM_KEYSTORE_PASSWORD, CM_KEY_PASSWORD, CM_KEY_ALIAS)
+        - google_play # <-- (Includes GCLOUD_SERVICE_ACCOUNT_CREDENTIALS <-- Put your google-services.json)
+      vars:
+        UNITY_BIN: $UNITY_HOME/Contents/MacOS/Unity
+        BUILD_SCRIPT: BuildAndroid
+        PACKAGE_NAME: "io.codemagic.unity" # <-- Put your package name here e.g. com.domain.myapp
+      android_signing:
+        - unity_codemagic
+    triggering:
+      events:
+        - push
+        - tag
+        - pull_request
+      branch_patterns:
+        - pattern: develop
+          include: true
+          source: true
+    scripts:
+      - name: Activate Unity License
+        script: |
+          $UNITY_BIN -batchmode -quit -logFile -serial ${UNITY_SERIAL?} -username ${UNITY_USERNAME?} -password ${UNITY_PASSWORD?}
+      - name: Set up keystore
+        script: |
+          # echo $CM_KEYSTORE | base64 --decode > $CM_BUILD_DIR/keystore.keystore # <-- Uncomment this line if you're not using the code-signing-identities and you want to manually decode the CM_KEYSTORE to CM_KEYSTORE_PATH
+      - name: Set build number and export Unity
+        script: |
+          export NEW_BUILD_NUMBER=$(($(google-play get-latest-build-number --package-name "$PACKAGE_NAME" --tracks=alpha) + 1))
+          $UNITY_BIN -batchmode -quit -logFile -projectPath . -executeMethod BuildScript.$BUILD_SCRIPT -nographics
+    artifacts:
+      - android/*.aab
+    publishing:
+      scripts:
+        - name: Deactivate Unity License
+          script: $UNITY_BIN -batchmode -quit -returnlicense -nographics
+      google_play:
+        # See the following link for information regarding publishing to Google Play - https://docs.codemagic.io/publishing-yaml/distribution/#google-play
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: alpha # Any default or custom track.
